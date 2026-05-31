@@ -77,9 +77,10 @@
         <div class="day-card" id="day-3"><h3 style="margin-top: 0; color: #aaa;">Day 4</h3><div class="events"></div></div>
     </div>
 <script>
+     <script>
         // --- CONFIGURATION AREA ---
-        var GOOGLE_API_KEY = 'AIzaSyDkzkJnO1i7M-7dwRvI7bfbNXhdhxQmv94';
-        var CALENDAR_ID = 'tealtandem@gmail.com'; 
+        // Paste your long Google Apps Script Web App URL here
+        var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9yIiJFzbU5MyJmlT2XI5pGnC_0Ja2FB89Kz68TbuM_yfRFL_eF2kjLalodITLq-qfLw/exec';
         
         var DEFAULT_CALENDAR_COLOR = '#039be5'; // Fallback color
         
@@ -155,23 +156,12 @@
         }
 
         function fetchCalendar() {
-            var now = new Date();
-            var timeMin = now.toISOString();
-            var future = new Date(now.getTime() + (4 * 24 * 60 * 60 * 1000));
-            var timeMax = future.toISOString();
-            
-            var url = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(CALENDAR_ID) + '/events?key=' + GOOGLE_API_KEY + '&timeMin=' + timeMin + '&timeMax=' + timeMax + '&singleEvents=true&orderBy=startTime';
-
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', url);
+            xhr.open('GET', APPS_SCRIPT_URL);
             xhr.onload = function() {
                 if (xhr.status === 200) {
-                    var data = JSON.parse(xhr.responseText);
-                    if (data.items) {
-                        organizeEvents(data.items);
-                    } else {
-                        document.getElementById('events-today').innerText = 'Check Calendar ID and API Key.';
-                    }
+                    var events = JSON.parse(xhr.responseText);
+                    organizeEvents(events);
                 } else {
                     document.getElementById('events-today').innerText = 'Failed to load calendar.';
                 }
@@ -179,23 +169,17 @@
             xhr.send();
         }
 
-function organizeEvents(events) {
+        function organizeEvents(events) {
             var now = new Date();
             var todayStr = now.toDateString();
-            
             var tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
             var tomorrowStr = tomorrow.toDateString();
-            
             var day2 = new Date(now.getTime() + (2 * 24 * 60 * 60 * 1000));
             var day2Str = day2.toDateString();
-            
             var day3 = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
             var day3Str = day3.toDateString();
 
-            var todayHtml = '';
-            var tomorrowHtml = '';
-            var day2Html = '';
-            var day3Html = '';
+            var todayHtml = ''; var tomorrowHtml = ''; var day2Html = ''; var day3Html = '';
 
             var formatOptions = { weekday: 'long', month: 'short', day: 'numeric' };
             document.querySelector('#day-1 h3').innerText = tomorrow.toLocaleDateString('en-US', formatOptions);
@@ -204,18 +188,10 @@ function organizeEvents(events) {
 
             for (var i = 0; i < events.length; i++) {
                 var event = events[i];
-                var startObj = event.start.dateTime ? event.start.dateTime : event.start.date;
-                var start = new Date(startObj);
-                var eventDateStr = start.toDateString();
-                
-                // DIAGNOSTIC: Check exactly what Google is sending for the color
-                var rawColorId = event.colorId ? event.colorId : 'NONE';
+                var eventDateStr = event.dateStr;
                 
                 var bgColor = event.colorId ? googleColors[event.colorId] : DEFAULT_CALENDAR_COLOR;
-                
-                // Print the raw ID directly to the screen so we can see it
-                var eventText = '[ID: ' + rawColorId + '] ' + event.summary;
-                var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + eventText + '</div>';
+                var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + event.summary + '</div>';
 
                 if (eventDateStr === todayStr) {
                     todayHtml += eventElement;
