@@ -6,33 +6,77 @@
     <title>Front Door Dashboard</title>
     <style>
         body { 
-            <body>
+            margin: 0; 
+            background: #000; 
+            color: #fff; 
+            font-family: sans-serif; 
+            display: grid; 
+            grid-template-columns: 2fr 1fr; 
+            height: 100vh; 
+            gap: 20px; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            overflow: hidden;
+        }
+        .today-panel { 
+            background: #222; 
+            border-radius: 12px; 
+            padding: 30px; 
+            display: flex;
+            flex-direction: column;
+        }
+        .future-panel { 
+            display: grid; 
+            grid-template-rows: repeat(3, 1fr); 
+            gap: 20px; 
+        }
+        .day-card { 
+            background: #111; 
+            border-radius: 12px; 
+            padding: 20px; 
+            overflow-y: auto;
+        }
+        .event-item {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #333;
+        }
+        #events-today {
+            flex-grow: 1;
+            font-size: 1.2em; /* Makes today's events larger */
+        }
+    </style>
+</head>
+<body>
     <div class="today-panel">
         <h1 id="today-date">Loading...</h1>
-        <div id="weather-today">Fetching weather...</div>
+        <div id="weather-today" style="margin-bottom: 20px; color: #aaa;">Fetching weather...</div>
+        <h2>Today's Schedule</h2>
         <div id="events-today">Loading today's schedule...</div>
     </div>
     <div class="future-panel">
-        <div class="day-card" id="day-1"><h3>Tomorrow</h3><div class="events"></div></div>
-        <div class="day-card" id="day-2"><h3>Day 3</h3><div class="events"></div></div>
-        <div class="day-card" id="day-3"><h3>Day 4</h3><div class="events"></div></div>
+        <div class="day-card" id="day-1"><h3 style="margin-top: 0;">Tomorrow</h3><div class="events"></div></div>
+        <div class="day-card" id="day-2"><h3 style="margin-top: 0;">Day 3</h3><div class="events"></div></div>
+        <div class="day-card" id="day-3"><h3 style="margin-top: 0;">Day 4</h3><div class="events"></div></div>
     </div>
 
     <script>
-        // CONFIGURATION
+        // --- CONFIGURATION AREA ---
         const GOOGLE_API_KEY = 'AIzaSyDkzkJnO1i7M-7dwRvI7bfbNXhdhxQmv94';
-        const CALENDAR_ID = 'tealtandem@gmail.com'; // e.g., your email or a specific calendar ID
-        const LATITUDE = '30.4213';  // coordinates
+        const CALENDAR_ID = 'tealtandem@gmail.com'; 
+        
+        // Coordinates for National Weather Service API
+        const LATITUDE = '30.4213';  
         const LONGITUDE = '-87.2169';
+        // --------------------------
 
         // Set Current Date Heading
-        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
         document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
 
         // 1. FETCH WEATHER (National Weather Service - Keyless)
         async function fetchWeather() {
             try {
-                // NWS requires fetching the points endpoint first to get the local grid forecast URL
                 const pointsResponse = await fetch(`https://api.weather.gov/points/${LATITUDE},${LONGITUDE}`);
                 const pointsData = await pointsResponse.json();
                 const forecastUrl = pointsData.properties.forecast;
@@ -44,11 +88,11 @@
                 // Today's weather (first period)
                 const todayWeather = periods[0];
                 document.getElementById('weather-today').innerHTML = `
-                    <h2>${todayWeather.temperature}°${todayWeather.temperatureUnit}</h2>
-                    <p>${todayWeather.shortForecast}</p>
+                    <div style="font-size: 2em; font-weight: bold;">${todayWeather.temperature}°${todayWeather.temperatureUnit}</div>
+                    <div>${todayWeather.shortForecast}</div>
                 `;
             } catch (error) {
-                document.getElementById('weather-today').innerText = 'Weather unavailable';
+                document.getElementById('weather-today').innerText = 'Weather currently unavailable';
                 console.error('Weather Error:', error);
             }
         }
@@ -63,9 +107,13 @@
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                organizeEvents(data.items);
+                if (data.items) {
+                    organizeEvents(data.items);
+                } else {
+                    document.getElementById('events-today').innerText = 'Check Calendar ID and API Key permissions.';
+                }
             } catch (error) {
-                document.getElementById('events-today').innerText = 'Calendar error';
+                document.getElementById('events-today').innerText = 'Failed to load calendar.';
                 console.error('Calendar Error:', error);
             }
         }
@@ -82,9 +130,9 @@
             let day3Html = '';
 
             // Dynamic header labels for future days
-            document.querySelector('#day-1 h3').innerText = new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'long' });
-            document.querySelector('#day-2 h3').innerText = new Date(day2Str).toLocaleDateString('en-US', { weekday: 'long' });
-            document.querySelector('#day-3 h3').innerText = new Date(day3Str).toLocaleDateString('en-US', { weekday: 'long' });
+            document.querySelector('#day-1 h3').innerText = new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            document.querySelector('#day-2 h3').innerText = new Date(day2Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            document.querySelector('#day-3 h3').innerText = new Date(day3Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
             events.forEach(event => {
                 const start = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date);
@@ -100,10 +148,10 @@
                 else if (eventDateStr === day3Str) day3Html += eventElement;
             });
 
-            document.getElementById('events-today').innerHTML = todayHtml || '<p>No events today</p>';
-            document.querySelector('#day-1 .events').innerHTML = tomorrowHtml || 'Clear';
-            document.querySelector('#day-2 .events').innerHTML = day2Html || 'Clear';
-            document.querySelector('#day-3 .events').innerHTML = day3Html || 'Clear';
+            document.getElementById('events-today').innerHTML = todayHtml || '<p style="color: #666;">No events scheduled today</p>';
+            document.querySelector('#day-1 .events').innerHTML = tomorrowHtml || '<span style="color: #666;">Clear</span>';
+            document.querySelector('#day-2 .events').innerHTML = day2Html || '<span style="color: #666;">Clear</span>';
+            document.querySelector('#day-3 .events').innerHTML = day3Html || '<span style="color: #666;">Clear</span>';
         }
 
         // Initial fetch and set interval to auto-refresh every 15 minutes
@@ -114,23 +162,5 @@
             fetchCalendar();
         }, 15 * 60 * 1000);
     </script>
-</body>
-<body>
-    <div class="today-panel">
-        <h1>Today</h1>
-        <div id="weather-today"></div>
-        <div id="events-today"></div>
-    </div>
-    <div class="future-panel">
-        <div class="day-card" id="day-1">
-            <h3>Tomorrow</h3>
-        </div>
-        <div class="day-card" id="day-2">
-            <h3>Day 3</h3>
-        </div>
-        <div class="day-card" id="day-3">
-            <h3>Day 4</h3>
-        </div>
-    </div>
 </body>
 </html>
