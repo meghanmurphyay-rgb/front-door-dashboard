@@ -6,35 +6,115 @@
     <title>Front Door Dashboard</title>
     <style>
         body { 
-            margin: 0; 
-            background: #000; 
-            color: #fff; 
-            font-family: sans-serif; 
-            display: grid; 
-            grid-template-columns: 2fr 1fr; 
-            height: 100vh; 
-            gap: 20px; 
-            padding: 20px; 
-            box-sizing: border-box; 
-            overflow: hidden;
+            <body>
+    <div class="today-panel">
+        <h1 id="today-date">Loading...</h1>
+        <div id="weather-today">Fetching weather...</div>
+        <div id="events-today">Loading today's schedule...</div>
+    </div>
+    <div class="future-panel">
+        <div class="day-card" id="day-1"><h3>Tomorrow</h3><div class="events"></div></div>
+        <div class="day-card" id="day-2"><h3>Day 3</h3><div class="events"></div></div>
+        <div class="day-card" id="day-3"><h3>Day 4</h3><div class="events"></div></div>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        const GOOGLE_API_KEY = 'YOUR_RESTRICTED_GOOGLE_API_KEY';
+        const CALENDAR_ID = 'YOUR_GOOGLE_CALENDAR_ID'; // e.g., your email or a specific calendar ID
+        const LATITUDE = '30.4213';  // Pensacola, FL coordinates
+        const LONGITUDE = '-87.2169';
+
+        // Set Current Date Heading
+        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
+
+        // 1. FETCH WEATHER (National Weather Service - Keyless)
+        async function fetchWeather() {
+            try {
+                // NWS requires fetching the points endpoint first to get the local grid forecast URL
+                const pointsResponse = await fetch(`https://api.weather.gov/points/${LATITUDE},${LONGITUDE}`);
+                const pointsData = await pointsResponse.json();
+                const forecastUrl = pointsData.properties.forecast;
+
+                const forecastResponse = await fetch(forecastUrl);
+                const forecastData = await forecastResponse.json();
+                const periods = forecastData.properties.periods;
+
+                // Today's weather (first period)
+                const todayWeather = periods[0];
+                document.getElementById('weather-today').innerHTML = `
+                    <h2>${todayWeather.temperature}°${todayWeather.temperatureUnit}</h2>
+                    <p>${todayWeather.shortForecast}</p>
+                `;
+            } catch (error) {
+                document.getElementById('weather-today').innerText = 'Weather unavailable';
+                console.error('Weather Error:', error);
+            }
         }
-        .today-panel { 
-            background: #222; 
-            border-radius: 12px; 
-            padding: 30px; 
+
+        // 2. FETCH GOOGLE CALENDAR
+        async function fetchCalendar() {
+            const timeMin = new Date().toISOString();
+            const timeMax = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // Fetch 4 days out
+            
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${GOOGLE_API_KEY}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                organizeEvents(data.items);
+            } catch (error) {
+                document.getElementById('events-today').innerText = 'Calendar error';
+                console.error('Calendar Error:', error);
+            }
         }
-        .future-panel { 
-            display: grid; 
-            grid-template-rows: repeat(3, 1fr); 
-            gap: 20px; 
+
+        function organizeEvents(events) {
+            const todayStr = new Date().toDateString();
+            const tomorrowStr = new Date(Date.now() + 24 * 60 * 60 * 1000).toDateString();
+            const day2Str = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toDateString();
+            const day3Str = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toDateString();
+
+            let todayHtml = '';
+            let tomorrowHtml = '';
+            let day2Html = '';
+            let day3Html = '';
+
+            // Dynamic header labels for future days
+            document.querySelector('#day-1 h3').innerText = new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'long' });
+            document.querySelector('#day-2 h3').innerText = new Date(day2Str).toLocaleDateString('en-US', { weekday: 'long' });
+            document.querySelector('#day-3 h3').innerText = new Date(day3Str).toLocaleDateString('en-US', { weekday: 'long' });
+
+            events.forEach(event => {
+                const start = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date);
+                const eventDateStr = start.toDateString();
+                
+                // Format time string if it's not an all-day event
+                const timeString = event.start.dateTime ? start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'All Day';
+                const eventElement = `<div class="event-item"><strong>${timeString}</strong> - ${event.summary}</div>`;
+
+                if (eventDateStr === todayStr) todayHtml += eventElement;
+                else if (eventDateStr === tomorrowStr) tomorrowHtml += eventElement;
+                else if (eventDateStr === day2Str) day2Html += eventElement;
+                else if (eventDateStr === day3Str) day3Html += eventElement;
+            });
+
+            document.getElementById('events-today').innerHTML = todayHtml || '<p>No events today</p>';
+            document.querySelector('#day-1 .events').innerHTML = tomorrowHtml || 'Clear';
+            document.querySelector('#day-2 .events').innerHTML = day2Html || 'Clear';
+            document.querySelector('#day-3 .events').innerHTML = day3Html || 'Clear';
         }
-        .day-card { 
-            background: #111; 
-            border-radius: 12px; 
-            padding: 20px; 
-        }
-    </style>
-</head>
+
+        // Initial fetch and set interval to auto-refresh every 15 minutes
+        fetchWeather();
+        fetchCalendar();
+        setInterval(() => {
+            fetchWeather();
+            fetchCalendar();
+        }, 15 * 60 * 1000);
+    </script>
+</body>
 <body>
     <div class="today-panel">
         <h1>Today</h1>
