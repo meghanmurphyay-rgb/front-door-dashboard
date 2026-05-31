@@ -179,7 +179,7 @@
             xhr.send();
         }
 
-        function organizeEvents(events) {
+function organizeEvents(events) {
             var now = new Date();
             var todayStr = now.toDateString();
             
@@ -208,8 +208,14 @@
                 var start = new Date(startObj);
                 var eventDateStr = start.toDateString();
                 
+                // DIAGNOSTIC: Check exactly what Google is sending for the color
+                var rawColorId = event.colorId ? event.colorId : 'NONE';
+                
                 var bgColor = event.colorId ? googleColors[event.colorId] : DEFAULT_CALENDAR_COLOR;
-                var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + event.summary + '</div>';
+                
+                // Print the raw ID directly to the screen so we can see it
+                var eventText = '[ID: ' + rawColorId + '] ' + event.summary;
+                var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + eventText + '</div>';
 
                 if (eventDateStr === todayStr) {
                     todayHtml += eventElement;
