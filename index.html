@@ -34,6 +34,7 @@
     </style>
 </head>
 <body>
+    <div id="night-shield" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; cursor: pointer;"></div>
     <div class="today-panel">
         <h1 id="today-date" style="margin-top: 0;">Loading Date...</h1>
         
@@ -62,6 +63,10 @@
         var DEFAULT_CALENDAR_COLOR = '#039be5'; //blue
         var LATITUDE = '30.4213';  
         var LONGITUDE = '-87.2169';
+        // Night Mode Hours (24-hour format)
+        var SLEEP_HOUR = 22; // 10 PM
+        var WAKE_HOUR = 5;   // 5 AM
+        var isSnoozed = false;
         // --------------------------
 
         var googleColors = {
@@ -113,7 +118,38 @@
 
             return '<i class="bi ' + icon + '" style="font-size: 5em; color: ' + color + '; line-height: 1;"></i>';
         }
+        
+        function checkNightMode() {
+            if (isSnoozed) return; 
 
+            var currentHour = new Date().getHours();
+            var shield = document.getElementById('night-shield');
+
+            // Handles logic whether sleep crosses midnight (e.g., 22 to 6) or not
+            var isNight = false;
+            if (SLEEP_HOUR > WAKE_HOUR) {
+                isNight = (currentHour >= SLEEP_HOUR || currentHour < WAKE_HOUR);
+            } else {
+                isNight = (currentHour >= SLEEP_HOUR && currentHour < WAKE_HOUR);
+            }
+
+            shield.style.display = isNight ? 'block' : 'none';
+        }
+
+        // Tap to wake for 2 minutes
+        document.getElementById('night-shield').addEventListener('click', function() {
+        this.style.display = 'none';
+            isSnoozed = true;
+            setTimeout(function() {
+                isSnoozed = false;
+                checkNightMode();
+            }, 120000); // 120,000 milliseconds = 2 minutes
+        });
+
+        // Check the clock every minute
+        setInterval(checkNightMode, 60000);
+        checkNightMode(); // Check immediately on load
+        
         function fetchWeather() {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'https://api.weather.gov/points/' + LATITUDE + ',' + LONGITUDE);
