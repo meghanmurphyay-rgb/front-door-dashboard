@@ -10,54 +10,77 @@
             background: #000; 
             color: #fff; 
             font-family: sans-serif; 
-            display: grid; 
-            grid-template-columns: 2fr 1fr; 
+            display: flex; 
+            flex-direction: column; 
             height: 100vh; 
-            gap: 20px; 
             padding: 20px; 
             box-sizing: border-box; 
+            gap: 20px;
             overflow: hidden;
         }
         .today-panel { 
             background: #222; 
             border-radius: 12px; 
             padding: 30px; 
+            flex-grow: 1; /* Allows Today to take up the main vertical space */
             display: flex;
             flex-direction: column;
         }
+        .weather-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .weather-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 15px; /* NWS icons are square, this softens the edges */
+        }
         .future-panel { 
             display: grid; 
-            grid-template-rows: repeat(3, 1fr); 
+            /* Places the 3 future days side-by-side below Today. 
+               Change 'columns' to 'rows' if you want them stacked vertically instead. */
+            grid-template-columns: repeat(3, 1fr); 
             gap: 20px; 
+            min-height: 25vh; 
         }
         .day-card { 
             background: #111; 
             border-radius: 12px; 
             padding: 20px; 
-            overflow-y: auto;
+            overflow-y: hidden;
         }
         .event-item {
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #333;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.1em;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.6); /* Ensures text is readable on light colors */
         }
-        #events-today {
-            flex-grow: 1;
-            font-size: 1.2em; /* Makes today's events larger */
+        #events-today .event-item {
+            font-size: 1.4em; /* Makes today's events larger */
+            padding: 15px;
         }
     </style>
 </head>
 <body>
     <div class="today-panel">
-        <h1 id="today-date">Loading...</h1>
-        <div id="weather-today" style="margin-bottom: 20px; color: #aaa;">Fetching weather...</div>
-        <h2>Today's Schedule</h2>
+        <h1 id="today-date" style="margin-top: 0;">Loading...</h1>
+        
+        <div id="weather-today" class="weather-container">
+            <div style="color: #aaa;">Fetching weather...</div>
+        </div>
+
         <div id="events-today">Loading today's schedule...</div>
     </div>
+
     <div class="future-panel">
-        <div class="day-card" id="day-1"><h3 style="margin-top: 0;">Tomorrow</h3><div class="events"></div></div>
-        <div class="day-card" id="day-2"><h3 style="margin-top: 0;">Day 3</h3><div class="events"></div></div>
-        <div class="day-card" id="day-3"><h3 style="margin-top: 0;">Day 4</h3><div class="events"></div></div>
+        <div class="day-card" id="day-1"><h3 style="margin-top: 0; color: #aaa;">Tomorrow</h3><div class="events"></div></div>
+        <div class="day-card" id="day-2"><h3 style="margin-top: 0; color: #aaa;">Day 3</h3><div class="events"></div></div>
+        <div class="day-card" id="day-3"><h3 style="margin-top: 0; color: #aaa;">Day 4</h3><div class="events"></div></div>
     </div>
 
     <script>
@@ -70,11 +93,27 @@
         const LONGITUDE = '-87.2169';
         // --------------------------
 
+        // Map Google Calendar Color IDs to Hex Codes
+        const googleColors = {
+            '1': '#7986cb', // Lavender
+            '2': '#33b679', // Sage
+            '3': '#8e24aa', // Grape
+            '4': '#e67c73', // Flamingo
+            '5': '#f6c026', // Banana
+            '6': '#f5511d', // Tangerine
+            '7': '#039be5', // Peacock
+            '8': '#616161', // Graphite
+            '9': '#3f51b5', // Blueberry
+            '10': '#0b8043', // Basil
+            '11': '#d50000'  // Tomato
+        };
+        const defaultColor = '#444444'; // Fallback if no specific event color is set
+
         // Set Current Date Heading
         const options = { weekday: 'long', month: 'long', day: 'numeric' };
         document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
 
-        // 1. FETCH WEATHER (National Weather Service - Keyless)
+        // 1. FETCH WEATHER
         async function fetchWeather() {
             try {
                 const pointsResponse = await fetch(`https://api.weather.gov/points/${LATITUDE},${LONGITUDE}`);
@@ -85,11 +124,14 @@
                 const forecastData = await forecastResponse.json();
                 const periods = forecastData.properties.periods;
 
-                // Today's weather (first period)
                 const todayWeather = periods[0];
+                
                 document.getElementById('weather-today').innerHTML = `
-                    <div style="font-size: 2em; font-weight: bold;">${todayWeather.temperature}°${todayWeather.temperatureUnit}</div>
-                    <div>${todayWeather.shortForecast}</div>
+                    <img src="${todayWeather.icon}" class="weather-icon" alt="${todayWeather.shortForecast}">
+                    <div>
+                        <div style="font-size: 2.5em; font-weight: bold;">${todayWeather.temperature}°${todayWeather.temperatureUnit}</div>
+                        <div style="font-size: 1.2em; color: #aaa;">${todayWeather.shortForecast}</div>
+                    </div>
                 `;
             } catch (error) {
                 document.getElementById('weather-today').innerText = 'Weather currently unavailable';
@@ -100,7 +142,7 @@
         // 2. FETCH GOOGLE CALENDAR
         async function fetchCalendar() {
             const timeMin = new Date().toISOString();
-            const timeMax = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); // Fetch 4 days out
+            const timeMax = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); 
             
             const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${GOOGLE_API_KEY}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
 
@@ -129,7 +171,6 @@
             let day2Html = '';
             let day3Html = '';
 
-            // Dynamic header labels for future days
             document.querySelector('#day-1 h3').innerText = new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
             document.querySelector('#day-2 h3').innerText = new Date(day2Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
             document.querySelector('#day-3 h3').innerText = new Date(day3Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
@@ -138,9 +179,11 @@
                 const start = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date);
                 const eventDateStr = start.toDateString();
                 
-                // Format time string if it's not an all-day event
-                const timeString = event.start.dateTime ? start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'All Day';
-                const eventElement = `<div class="event-item"><strong>${timeString}</strong> - ${event.summary}</div>`;
+                // Determine event color
+                const bgColor = event.colorId ? googleColors[event.colorId] : defaultColor;
+                
+                // Build the HTML block (Time removed, color applied)
+                const eventElement = `<div class="event-item" style="background-color: ${bgColor};">${event.summary}</div>`;
 
                 if (eventDateStr === todayStr) todayHtml += eventElement;
                 else if (eventDateStr === tomorrowStr) tomorrowHtml += eventElement;
@@ -154,7 +197,6 @@
             document.querySelector('#day-3 .events').innerHTML = day3Html || '<span style="color: #666;">Clear</span>';
         }
 
-        // Initial fetch and set interval to auto-refresh every 15 minutes
         fetchWeather();
         fetchCalendar();
         setInterval(() => {
