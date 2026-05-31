@@ -76,137 +76,151 @@
         <div class="day-card" id="day-2"><h3 style="margin-top: 0; color: #aaa;">Day 3</h3><div class="events"></div></div>
         <div class="day-card" id="day-3"><h3 style="margin-top: 0; color: #aaa;">Day 4</h3><div class="events"></div></div>
     </div>
-
-    <script>
+<script>
         // --- CONFIGURATION AREA ---
-        const GOOGLE_API_KEY = 'AIzaSyDkzkJnO1i7M-7dwRvI7bfbNXhdhxQmv94';
-        const CALENDAR_ID = 'tealtandem@gmail.com'; 
+        var GOOGLE_API_KEY = 'AIzaSyDkzkJnO1i7M-7dwRvI7bfbNXhdhxQmv94';
+        var CALENDAR_ID = 'tealtandem@gmail.com'; 
         
-        // If an event doesn't have a specific color, it will use this hex code. 
-        const DEFAULT_CALENDAR_COLOR = '#039be5'; // Currently set to Google's standard Blue. Change to your preference.
+        var DEFAULT_CALENDAR_COLOR = '#039be5'; // Fallback color
         
-        const LATITUDE = '30.4213';  
-        const LONGITUDE = '-87.2169';
+        var LATITUDE = '30.4213';  
+        var LONGITUDE = '-87.2169';
         // --------------------------
 
-        const googleColors = {
-            '1': '#7986cb', // Lavender
-            '2': '#33b679', // Sage
-            '3': '#8e24aa', // Grape
-            '4': '#e67c73', // Flamingo
-            '5': '#f6c026', // Banana
-            '6': '#f5511d', // Tangerine
-            '7': '#039be5', // Peacock
-            '8': '#616161', // Graphite
-            '9': '#3f51b5', // Blueberry
-            '10': '#0b8043', // Basil
-            '11': '#d50000'  // Tomato
+        var googleColors = {
+            '1': '#7986cb', '2': '#33b679', '3': '#8e24aa', '4': '#e67c73',
+            '5': '#f6c026', '6': '#f5511d', '7': '#039be5', '8': '#616161',
+            '9': '#3f51b5', '10': '#0b8043', '11': '#d50000'
         };
 
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        var options = { weekday: 'long', month: 'long', day: 'numeric' };
         document.getElementById('today-date').innerText = new Date().toLocaleDateString('en-US', options);
 
-        // Helper function to turn weather text into clean icons
         function getWeatherIconHTML(forecast, isDaytime) {
-            const text = forecast.toLowerCase();
-            let icon = 'bi-cloud-sun-fill';
-            let color = '#ccc'; // Default color
+            var text = forecast.toLowerCase();
+            var icon = 'bi-cloud-sun-fill';
+            var color = '#ccc';
 
-            if (text.includes('sunny') || text.includes('clear')) {
+            if (text.indexOf('sunny') !== -1 || text.indexOf('clear') !== -1) {
                 icon = isDaytime ? 'bi-sun-fill' : 'bi-moon-stars-fill';
-                color = isDaytime ? '#FFD700' : '#FFF'; // Yellow sun, white moon
-            } else if (text.includes('partly')) {
+                color = isDaytime ? '#FFD700' : '#FFF';
+            } else if (text.indexOf('partly') !== -1) {
                 icon = isDaytime ? 'bi-cloud-sun-fill' : 'bi-cloud-moon-fill';
                 color = '#e0e0e0';
-            } else if (text.includes('cloud') || text.includes('overcast')) {
+            } else if (text.indexOf('cloud') !== -1 || text.indexOf('overcast') !== -1) {
                 icon = 'bi-cloud-fill';
                 color = '#aaa';
-            } else if (text.includes('rain') || text.includes('shower') || text.includes('drizzle')) {
+            } else if (text.indexOf('rain') !== -1 || text.indexOf('shower') !== -1 || text.indexOf('drizzle') !== -1) {
                 icon = 'bi-cloud-rain-fill';
-                color = '#4ea8de'; // Rain blue
-            } else if (text.includes('thunder') || text.includes('storm')) {
+                color = '#4ea8de';
+            } else if (text.indexOf('thunder') !== -1 || text.indexOf('storm') !== -1) {
                 icon = 'bi-cloud-lightning-rain-fill';
-                color = '#8e7cc3'; // Storm purple
-            } else if (text.includes('snow') || text.includes('flurries')) {
+                color = '#8e7cc3';
+            } else if (text.indexOf('snow') !== -1 || text.indexOf('flurries') !== -1) {
                 icon = 'bi-snow';
                 color = '#fff';
             }
 
-            return `<i class="bi ${icon}" style="font-size: 5em; color: ${color}; line-height: 1;"></i>`;
+            return '<i class="bi ' + icon + '" style="font-size: 5em; color: ' + color + '; line-height: 1;"></i>';
         }
 
-        async function fetchWeather() {
-            try {
-                const pointsResponse = await fetch(`https://api.weather.gov/points/${LATITUDE},${LONGITUDE}`);
-                const pointsData = await pointsResponse.json();
-                const forecastUrl = pointsData.properties.forecast;
-
-                const forecastResponse = await fetch(forecastUrl);
-                const forecastData = await forecastResponse.json();
-                const periods = forecastData.properties.periods;
-
-                const todayWeather = periods[0];
-                const iconHTML = getWeatherIconHTML(todayWeather.shortForecast, todayWeather.isDaytime);
-                
-                document.getElementById('weather-today').innerHTML = `
-                    ${iconHTML}
-                    <div>
-                        <div style="font-size: 3em; font-weight: bold;">${todayWeather.temperature}°</div>
-                        <div style="font-size: 1.2em; color: #aaa;">${todayWeather.shortForecast}</div>
-                    </div>
-                `;
-            } catch (error) {
-                document.getElementById('weather-today').innerText = 'Weather currently unavailable';
-            }
-        }
-
-        async function fetchCalendar() {
-            const timeMin = new Date().toISOString();
-            const timeMax = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(); 
-            
-            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${GOOGLE_API_KEY}&timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data.items) {
-                    organizeEvents(data.items);
-                } else {
-                    document.getElementById('events-today').innerText = 'Check Calendar ID and API Key permissions.';
+        function fetchWeather() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://api.weather.gov/points/' + LATITUDE + ',' + LONGITUDE);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var pointsData = JSON.parse(xhr.responseText);
+                    var forecastUrl = pointsData.properties.forecast;
+                    
+                    var xhr2 = new XMLHttpRequest();
+                    xhr2.open('GET', forecastUrl);
+                    xhr2.onload = function() {
+                        if (xhr2.status === 200) {
+                            var forecastData = JSON.parse(xhr2.responseText);
+                            var todayWeather = forecastData.properties.periods[0];
+                            var iconHTML = getWeatherIconHTML(todayWeather.shortForecast, todayWeather.isDaytime);
+                            
+                            document.getElementById('weather-today').innerHTML = 
+                                iconHTML +
+                                '<div>' +
+                                '<div style="font-size: 3em; font-weight: bold;">' + todayWeather.temperature + '°</div>' +
+                                '<div style="font-size: 1.2em; color: #aaa;">' + todayWeather.shortForecast + '</div>' +
+                                '</div>';
+                        }
+                    };
+                    xhr2.send();
                 }
-            } catch (error) {
-                document.getElementById('events-today').innerText = 'Failed to load calendar.';
-            }
+            };
+            xhr.send();
+        }
+
+        function fetchCalendar() {
+            var now = new Date();
+            var timeMin = now.toISOString();
+            var future = new Date(now.getTime() + (4 * 24 * 60 * 60 * 1000));
+            var timeMax = future.toISOString();
+            
+            var url = 'https://www.googleapis.com/calendar/v3/calendars/' + encodeURIComponent(CALENDAR_ID) + '/events?key=' + GOOGLE_API_KEY + '&timeMin=' + timeMin + '&timeMax=' + timeMax + '&singleEvents=true&orderBy=startTime';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.items) {
+                        organizeEvents(data.items);
+                    } else {
+                        document.getElementById('events-today').innerText = 'Check Calendar ID and API Key.';
+                    }
+                } else {
+                    document.getElementById('events-today').innerText = 'Failed to load calendar.';
+                }
+            };
+            xhr.send();
         }
 
         function organizeEvents(events) {
-            const todayStr = new Date().toDateString();
-            const tomorrowStr = new Date(Date.now() + 24 * 60 * 60 * 1000).toDateString();
-            const day2Str = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toDateString();
-            const day3Str = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toDateString();
+            var now = new Date();
+            var todayStr = now.toDateString();
+            
+            var tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
+            var tomorrowStr = tomorrow.toDateString();
+            
+            var day2 = new Date(now.getTime() + (2 * 24 * 60 * 60 * 1000));
+            var day2Str = day2.toDateString();
+            
+            var day3 = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+            var day3Str = day3.toDateString();
 
-            let todayHtml = '';
-            let tomorrowHtml = '';
-            let day2Html = '';
-            let day3Html = '';
+            var todayHtml = '';
+            var tomorrowHtml = '';
+            var day2Html = '';
+            var day3Html = '';
 
-            document.querySelector('#day-1 h3').innerText = new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-            document.querySelector('#day-2 h3').innerText = new Date(day2Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-            document.querySelector('#day-3 h3').innerText = new Date(day3Str).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+            var formatOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+            document.querySelector('#day-1 h3').innerText = tomorrow.toLocaleDateString('en-US', formatOptions);
+            document.querySelector('#day-2 h3').innerText = day2.toLocaleDateString('en-US', formatOptions);
+            document.querySelector('#day-3 h3').innerText = day3.toLocaleDateString('en-US', formatOptions);
 
-            events.forEach(event => {
-                const start = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date);
-                const eventDateStr = start.toDateString();
+            for (var i = 0; i < events.length; i++) {
+                var event = events[i];
+                var startObj = event.start.dateTime ? event.start.dateTime : event.start.date;
+                var start = new Date(startObj);
+                var eventDateStr = start.toDateString();
                 
-                const bgColor = event.colorId ? googleColors[event.colorId] : DEFAULT_CALENDAR_COLOR;
-                
-                const eventElement = `<div class="event-item" style="background-color: ${bgColor};">${event.summary}</div>`;
+                var bgColor = event.colorId ? googleColors[event.colorId] : DEFAULT_CALENDAR_COLOR;
+                var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + event.summary + '</div>';
 
-                if (eventDateStr === todayStr) todayHtml += eventElement;
-                else if (eventDateStr === tomorrowStr) tomorrowHtml += eventElement;
-                else if (eventDateStr === day2Str) day2Html += eventElement;
-                else if (eventDateStr === day3Str) day3Html += eventElement;
-            });
+                if (eventDateStr === todayStr) {
+                    todayHtml += eventElement;
+                } else if (eventDateStr === tomorrowStr) {
+                    tomorrowHtml += eventElement;
+                } else if (eventDateStr === day2Str) {
+                    day2Html += eventElement;
+                } else if (eventDateStr === day3Str) {
+                    day3Html += eventElement;
+                }
+            }
 
             document.getElementById('events-today').innerHTML = todayHtml || '<p style="color: #666;">No events scheduled today</p>';
             document.querySelector('#day-1 .events').innerHTML = tomorrowHtml || '<span style="color: #666;">Clear</span>';
@@ -216,7 +230,7 @@
 
         fetchWeather();
         fetchCalendar();
-        setInterval(() => {
+        setInterval(function() {
             fetchWeather();
             fetchCalendar();
         }, 15 * 60 * 1000);
