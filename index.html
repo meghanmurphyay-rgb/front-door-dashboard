@@ -189,8 +189,7 @@
                     var data = JSON.parse(xhr.responseText);
                     organizeEvents(data.events);
                     if (data.notes) {
-                        document.getElementById('notes-content').innerText = data.notes;
-                    }
+document.getElementById('notes-content').innerText = data.notes.trim();                    }
                 } else {
                     document.getElementById('events-today').innerHTML = 'Failed to load data. Status: ' + xhr.status;
                 }
