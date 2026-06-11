@@ -72,7 +72,6 @@
     </div>
 
     <div class="notes-panel">
-       // <h3 style="margin-top: 0; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 10px;">Notes</h3>
         <div id="notes-content">Loading notes from Google Doc...</div>
     </div>
 
@@ -158,7 +157,6 @@
                 if (xhr.status === 200) {
                     var pointsData = JSON.parse(xhr.responseText);
                     var forecastUrl = pointsData.properties.forecast;
-                    
                     var xhr2 = new XMLHttpRequest();
                     xhr2.open('GET', forecastUrl);
                     xhr2.onload = function() {
@@ -222,7 +220,6 @@
             for (var i = 0; i < events.length; i++) {
                 var event = events[i];
                 var eventDateStr = event.dateStr;
-                
                 var bgColor = event.colorId ? googleColors[event.colorId] : DEFAULT_CALENDAR_COLOR;
                 var eventElement = '<div class="event-item" style="background-color: ' + bgColor + ';">' + event.summary + '</div>';
 
