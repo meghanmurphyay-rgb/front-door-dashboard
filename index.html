@@ -9,39 +9,54 @@
         body { 
             margin: 0; background: #000; color: #fff; font-family: sans-serif; 
             display: flex; flex-direction: column; height: 100vh; padding: 20px; 
-            box-sizing: border-box; gap: 20px; overflow: hidden;
+            box-sizing: border-box; overflow: hidden;
         }
         .today-panel { 
-            background: #222; border-radius: 12px; padding: 30px; 
-            flex-grow: 1; display: flex; flex-direction: column;
+            background: #222; border-radius: 12px; padding: 20px 30px; 
+            flex: 0 0 35vh; 
+            display: flex; flex-direction: column; overflow-y: auto;
+            margin-bottom: 20px;
         }
         .weather-container {
-            display: flex; align-items: center; gap: 30px; margin-bottom: 30px;
+            display: flex; align-items: center; margin-bottom: 15px;
+        }
+        .weather-icon-wrapper {
+            margin-right: 30px;
         }
         .future-panel { 
             display: grid; grid-template-columns: repeat(3, 1fr); 
-            gap: 20px; min-height: 25vh; 
+            grid-gap: 20px; 
+            flex: 0 0 20vh;
+            margin-bottom: 20px;
         }
         .day-card { 
             background: #111; border-radius: 12px; padding: 20px; overflow-y: hidden;
+        }
+        .notes-panel {
+            background: #1a1a1a; border-radius: 12px; padding: 20px 30px;
+            flex-grow: 1; 
+            overflow-y: auto;
+        }
+        #notes-content {
+            font-size: 1.3em; line-height: 1.4; color: #ddd;
+            white-space: pre-wrap; 
         }
         .event-item {
             margin-bottom: 10px; padding: 10px; border-radius: 8px;
             color: #fff; font-weight: bold; font-size: 1.1em;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.6); 
         }
-        #events-today .event-item { font-size: 1.4em; padding: 15px; }
+        #events-today .event-item { font-size: 1.3em; padding: 12px; }
     </style>
 </head>
 <body>
     <div id="night-shield" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 9999; cursor: pointer;"></div>
+    
     <div class="today-panel">
-        <h1 id="today-date" style="margin-top: 0;">Loading Date...</h1>
-        
+        <h1 id="today-date" style="margin-top: 0; margin-bottom: 10px;">Loading Date...</h1>
         <div id="weather-today" class="weather-container">
             <div style="color: #aaa;">Fetching weather...</div>
         </div>
-
         <div id="events-today">Loading today's schedule...</div>
     </div>
 
@@ -51,39 +66,33 @@
         <div class="day-card" id="day-3"><h3 id="h3-day3" style="margin-top: 0; color: #aaa;">Day 4</h3><div id="events-day3"></div></div>
     </div>
 
+    <div class="notes-panel">
+        <h3 style="margin-top: 0; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 10px;">Notes</h3>
+        <div id="notes-content">Loading notes from Google Doc...</div>
+    </div>
+
     <script>
-        // ON-SCREEN ERROR CATCHER
         window.onerror = function(message, source, lineno, colno, error) {
             document.getElementById('events-today').innerHTML = '<div style="color:red;">CRASH REPORT:<br>Msg: ' + message + '<br>Line: ' + lineno + '</div>';
             return true;
         };
 
         // --- CONFIGURATION AREA ---
-        var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9yIiJFzbU5MyJmlT2XI5pGnC_0Ja2FB89Kz68TbuM_yfRFL_eF2kjLalodITLq-qfLw/exec';
-        var DEFAULT_CALENDAR_COLOR = '#039be5'; //blue
+        var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyIKDJ9DxdQdXSSgpdStXZmm8Bbeeadibl0DeVFVs8DNjQmHVv9np1nMRw9vA_S4KznLQ/exec';
+        var DEFAULT_CALENDAR_COLOR = '#039be5'; 
         var LATITUDE = '30.4213';  
         var LONGITUDE = '-87.2169';
-        // Night Mode Hours (24-hour format)
-        var SLEEP_HOUR = 22; // 10 PM
-        var WAKE_HOUR = 5;   // 5 AM
+        var SLEEP_HOUR = 22;
+        var WAKE_HOUR = 5;
         var isSnoozed = false;
         // --------------------------
 
         var googleColors = {
-            '1': '#7986cb', // light blue
-            '2': '#149db3', // Meghan Teal
-            '3': '#6b0fc7', // Wes Purple
-            '4': '#a21185', // Birthday Pink
-            '5': '#d8a405', // NFCU Yellow
-            '6': '#C1490E', // Orange
-            '7': '#12ff39', // ?
-            '8': '#616161', // Grey
-            '9': '#3f51b5', // Dark Blue
-            '10': '#0b8043', // Green
-            '11': '#a60707'// Red
+            '1': '#7986cb', '2': '#149db3', '3': '#6b0fc7', '4': '#a21185',
+            '5': '#d8a405', '6': '#C1490E', '7': '#12ff39', '8': '#616161',
+            '9': '#3f51b5', '10': '#0b8043', '11': '#a60707'
         };
 
-        // LEGACY SAFE DATE FORMATTER
         var dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         var shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -97,58 +106,45 @@
             var color = '#ccc';
 
             if (text.indexOf('sunny') !== -1 || text.indexOf('clear') !== -1) {
-                icon = isDaytime ? 'bi-sun-fill' : 'bi-moon-stars-fill';
-                color = isDaytime ? '#FFD700' : '#FFF';
+                icon = isDaytime ? 'bi-sun-fill' : 'bi-moon-stars-fill'; color = isDaytime ? '#FFD700' : '#FFF';
             } else if (text.indexOf('partly') !== -1) {
-                icon = isDaytime ? 'bi-cloud-sun-fill' : 'bi-cloud-moon-fill';
-                color = '#e0e0e0';
+                icon = isDaytime ? 'bi-cloud-sun-fill' : 'bi-cloud-moon-fill'; color = '#e0e0e0';
             } else if (text.indexOf('cloud') !== -1 || text.indexOf('overcast') !== -1) {
-                icon = 'bi-cloud-fill';
-                color = '#aaa';
+                icon = 'bi-cloud-fill'; color = '#aaa';
             } else if (text.indexOf('rain') !== -1 || text.indexOf('shower') !== -1 || text.indexOf('drizzle') !== -1) {
-                icon = 'bi-cloud-rain-fill';
-                color = '#4ea8de';
+                icon = 'bi-cloud-rain-fill'; color = '#4ea8de';
             } else if (text.indexOf('thunder') !== -1 || text.indexOf('storm') !== -1) {
-                icon = 'bi-cloud-lightning-rain-fill';
-                color = '#8e7cc3';
+                icon = 'bi-cloud-lightning-rain-fill'; color = '#8e7cc3';
             } else if (text.indexOf('snow') !== -1 || text.indexOf('flurries') !== -1) {
-                icon = 'bi-snow';
-                color = '#fff';
+                icon = 'bi-snow'; color = '#fff';
             }
-
-            return '<i class="bi ' + icon + '" style="font-size: 5em; color: ' + color + '; line-height: 1;"></i>';
+            return '<div class="weather-icon-wrapper"><i class="bi ' + icon + '" style="font-size: 4em; color: ' + color + '; line-height: 1;"></i></div>';
         }
         
         function checkNightMode() {
             if (isSnoozed) return; 
-
             var currentHour = new Date().getHours();
             var shield = document.getElementById('night-shield');
-
-            // Handles logic whether sleep crosses midnight (e.g., 22 to 6) or not
             var isNight = false;
             if (SLEEP_HOUR > WAKE_HOUR) {
                 isNight = (currentHour >= SLEEP_HOUR || currentHour < WAKE_HOUR);
             } else {
                 isNight = (currentHour >= SLEEP_HOUR && currentHour < WAKE_HOUR);
             }
-
             shield.style.display = isNight ? 'block' : 'none';
         }
 
-        // Tap to wake for 2 minutes
         document.getElementById('night-shield').addEventListener('click', function() {
-        this.style.display = 'none';
+            this.style.display = 'none';
             isSnoozed = true;
             setTimeout(function() {
                 isSnoozed = false;
                 checkNightMode();
-            }, 120000); // 120,000 milliseconds = 2 minutes
+            }, 120000); 
         });
 
-        // Check the clock every minute
         setInterval(checkNightMode, 60000);
-        checkNightMode(); // Check immediately on load
+        checkNightMode(); 
         
         function fetchWeather() {
             var xhr = new XMLHttpRequest();
@@ -169,8 +165,8 @@
                             document.getElementById('weather-today').innerHTML = 
                                 iconHTML +
                                 '<div>' +
-                                '<div style="font-size: 3em; font-weight: bold;">' + todayWeather.temperature + '°</div>' +
-                                '<div style="font-size: 1.2em; color: #aaa;">' + todayWeather.shortForecast + '</div>' +
+                                '<div style="font-size: 2.5em; font-weight: bold;">' + todayWeather.temperature + '°</div>' +
+                                '<div style="font-size: 1.1em; color: #aaa;">' + todayWeather.shortForecast + '</div>' +
                                 '</div>';
                         }
                     };
@@ -187,10 +183,13 @@
             xhr.open('GET', APPS_SCRIPT_URL);
             xhr.onload = function() {
                 if (xhr.status === 200) {
-                    var events = JSON.parse(xhr.responseText);
-                    organizeEvents(events);
+                    var data = JSON.parse(xhr.responseText);
+                    organizeEvents(data.events);
+                    if (data.notes) {
+                        document.getElementById('notes-content').innerText = data.notes;
+                    }
                 } else {
-                    document.getElementById('events-today').innerHTML = 'Failed to load calendar. Status: ' + xhr.status;
+                    document.getElementById('events-today').innerHTML = 'Failed to load data. Status: ' + xhr.status;
                 }
             };
             xhr.onerror = function() {
