@@ -199,9 +199,11 @@ document.getElementById('notes-content').innerText = data.notes.trim();         
             };
             xhr.send();
         }
-
         function organizeEvents(events) {
             var now = new Date();
+            
+            document.getElementById('today-date').innerHTML = dayNames[now.getDay()] + ', ' + monthNames[now.getMonth()] + ' ' + now.getDate();
+ 
             var todayStr = now.toDateString();
             var tomorrow = new Date(now.getTime() + (24 * 60 * 60 * 1000));
             var tomorrowStr = tomorrow.toDateString();
